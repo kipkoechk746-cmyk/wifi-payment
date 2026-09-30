@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pay your WiFi bill</title>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#EEF4F8;--card:#fff;--ink:#12263A;--muted:#5A6B7B;--line:#D3DEE7;--accent:#1466C7;--accent-ink:#fff;--ok:#1E8A3E;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0F1C29;--card:#172A3B;--ink:#EAF1F7;--muted:#9FB2C3;--line:#2A4157;--accent:#5AA5F5;--accent-ink:#0F1C29;--ok:#5CCB7C}}
+:root[data-theme="dark"]{--bg:#0F1C29;--card:#172A3B;--ink:#EAF1F7;--muted:#9FB2C3;--line:#2A4157;--accent:#5AA5F5;--accent-ink:#0F1C29;--ok:#5CCB7C}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Figtree,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.5}
+main{max-width:480px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:1.1rem;margin:0 0 16px;font-weight:600;color:var(--muted)}
+.bill{background:var(--accent);color:var(--accent-ink);border-radius:20px;padding:24px 22px;margin-bottom:16px}
+.bill p{margin:0}
+.who{opacity:.85}
+.amt{font-size:3rem;font-weight:800;line-height:1.1;margin:6px 0 10px;letter-spacing:-.02em}
+.due{font-weight:600}
+section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+h2{font-size:1rem;margin:0 0 12px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.row:first-of-type{border-top:0}
+.row span{color:var(--muted);font-size:.9rem}
+.row b{font-size:1.05rem}
+button,.btn{font:inherit;font-weight:600;border:0;border-radius:10px;cursor:pointer;text-decoration:none;display:inline-block;text-align:center}
+.copy{background:transparent;color:var(--accent);border:1px solid var(--line);padding:6px 12px;font-size:.85rem}
+.copy:focus-visible,.go:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+ol{margin:0 0 4px;padding-left:20px;color:var(--muted);font-size:.92rem}
+label{display:block;font-size:.9rem;font-weight:600;margin:12px 0 4px}
+input{width:100%;font:inherit;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.go{width:100%;margin-top:16px;padding:14px;background:var(--ok);color:#fff;font-size:1rem}
+.note{color:var(--muted);font-size:.85rem;margin:10px 0 0}
+.mh{font-weight:800;margin:20px 0 6px}
+#methods .mh:first-child{margin-top:0}
+</style>
+</head>
+<body>
+<main>
+  <h1 id="biz"></h1>
+  <div class="bill">
+    <p class="who" id="who"></p>
+    <p class="amt" id="amt"></p>
+    <p class="due" id="due"></p>
+    <p class="who" style="margin-top:6px">Pay before the deadline to avoid disconnection.</p>
+  </div>
+
+  <section>
+    <h2>Pay with M-Pesa</h2>
+    <div id="methods"></div>
+  </section>
+
+  <section>
+    <h2>Already paid? Tell me</h2>
+    <label for="nm">Your name</label>
+    <input id="nm" autocomplete="name">
+    <label for="code">M-Pesa confirmation code</label>
+    <input id="code" placeholder="e.g. SJK4X9ABCD" autocapitalize="characters">
+    <a class="btn go" id="send" href="#">Send confirmation on WhatsApp</a>
+    <p class="note">Your WiFi stays on once payment is confirmed.</p>
+  </section>
+</main>
+
+<script>
+// ====== EDIT THESE ======
+var CONFIG = {
+  business: "Anselm Net Providers",      // your branch / network name
+  parent: "Mellen Metrolinks Solution",  // main provider (leave "" to hide)
+  method: "Paybill",               // "Paybill" or "Till"
+  number: "211111",                // your Paybill or Till number
+  account: "0703705511",           // Paybill account number (ignored for Till)
+  pochi: "0703705511",             // Lipa na Pochi number (leave "" to hide this option)
+  whatsapp: "254703705511",        // your WhatsApp number, no + or spaces
+  amount: 800,                     // default bill in KES
+  due: "2026-10-05",               // default due date (YYYY-MM-DD)
+  tenant: ""                       // default client name (optional)
+};
+// ========================
+// One link per client: page.html?name=Jane&amount=1500&due=2026-10-05
+var q = new URLSearchParams(location.search);
+var name = q.get("name") || CONFIG.tenant;
+var amount = Number(q.get("amount")) || CONFIG.amount;
+var dueStr = q.get("due") || CONFIG.due;
+
+function $(id){return document.getElementById(id)}
+$("biz").textContent = CONFIG.business + (CONFIG.parent ? ", part of " + CONFIG.parent : "");
+$("who").textContent = name ? "WiFi bill for " + name : "WiFi bill";
+$("amt").textContent = "KES " + amount.toLocaleString();
+
+var d = new Date(dueStr + "T23:59:59");
+var days = Math.ceil((d - new Date()) / 864e5);
+var dateTxt = isNaN(d) ? "" : d.toLocaleDateString(undefined,{day:"numeric",month:"long"});
+var when = days < 0 ? "Overdue since " + dateTxt : days === 0 ? "Due today" : days === 1 ? "Due tomorrow" : "Due " + dateTxt + " (" + days + " days left)";
+$("due").textContent = isNaN(d) ? "" : when;
+
+var isTill = CONFIG.method.toLowerCase() === "till";
+function block(title, rows, steps){
+  return '<p class="mh">'+title+'</p>' + rows.map(function(r){
+    return '<div class="row"><div><span>'+r[0]+'</span><br><b>'+r[1]+'</b></div><button class="copy" data-v="'+r[1]+'">Copy</button></div>';
+  }).join("") + '<ol>' + steps.map(function(s){return "<li>"+s+"</li>"}).join("") + '</ol>';
+}
+var html = "";
+var r1 = [[isTill ? "Till number" : "Paybill number", CONFIG.number]];
+if (!isTill) r1.push(["Account number", CONFIG.account]);
+r1.push(["Amount", String(amount)]);
+html += block(isTill ? "Option 1: Till number" : "Option 1: Paybill", r1, isTill
+  ? ["Open M-Pesa and choose Lipa na M-Pesa","Choose Buy Goods and Services","Enter the Till number and the amount","Enter your PIN and send"]
+  : ["Open M-Pesa and choose Lipa na M-Pesa","Choose Pay Bill","Enter the Business number, account number and amount","Enter your PIN and send"]);
+if (CONFIG.pochi) {
+  html += block("Option 2: Lipa na Pochi", [["Pochi number", CONFIG.pochi], ["Amount", String(amount)]],
+    ["Open M-Pesa and choose Lipa na M-Pesa","Choose Pochi la Biashara","Enter the Pochi number and the amount","Enter your PIN and send"]);
+}
+$("methods").innerHTML = html + '<p class="mh">Option 3: Cash</p><p class="note" style="margin-top:0">Pay KES ' + amount.toLocaleString() + ' in cash to me in person and I will confirm it.</p>';
+
+document.addEventListener("click", function(e){
+  var b = e.target.closest(".copy"); if(!b) return;
+  var v = b.getAttribute("data-v");
+  var done = function(){ b.textContent = "Copied"; setTimeout(function(){b.textContent="Copy"},1500) };
+  if (navigator.clipboard) navigator.clipboard.writeText(v).then(done, done); else done();
+});
+
+function link(){
+  var n = $("nm").value.trim() || name || "a client";
+  var c = $("code").value.trim().toUpperCase();
+  var msg = "Hello, this is " + n + ". I have paid KES " + amount + " for WiFi." + (c ? " M-Pesa code: " + c + "." : "");
+  $("send").href = "https://wa.me/" + CONFIG.whatsapp + "?text=" + encodeURIComponent(msg);
+}
+$("nm").value = name; link();
+$("nm").addEventListener("input", link);
+$("code").addEventListener("input", link);
+</script>
+</body>
+</html>
